@@ -21,7 +21,11 @@ fn main() {
 
     let stdin = io::stdin();
     for ln in stdin.lock().lines() {
-        let line = ln.unwrap();
+        let line;
+        match ln {
+            Ok(data) => line = data,
+            Err(_) => continue
+        }
         
         if line.len() < 4 {
             continue;
@@ -35,16 +39,33 @@ fn main() {
             continue;
         }
 
-        let _status_code = &str::replace(&status_code, " ", "_");
-        let ch1 = _status_code.chars().nth(0).unwrap();
-        let ch2 = _status_code.chars().nth(1).unwrap();
+        let ch1;
+        match status_code.chars().nth(0) {
+            Some(ch) => {
+                if ch == ' ' {
+                    ch1 = '_';
+                } else {
+                    ch1 = ch;
+                }
+            },
+            None => ch1 = '_'
+        }
+        let ch2;
+        match status_code.chars().nth(1) {
+            Some(ch) => {
+                if ch == ' ' {
+                    ch2 = '_';
+                } else {
+                    ch2 = ch;
+                }
+            },
+            None => ch2 = '_'
+        }
 
-        let mut entry: [&str; 3] = ["", "", ""];
+        let mut entry = ["", "", ""];
         let iter = str::split_whitespace(path_line);
-        let mut idx = 0;
-        for e in iter {
+        for (idx, e) in iter.enumerate() {
             entry[idx] = e;
-            idx = idx + 1;
             if idx >= 3 {
                 break;
             }
