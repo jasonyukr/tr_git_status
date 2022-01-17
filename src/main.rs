@@ -10,9 +10,8 @@ fn get_deco_status_code(ch1: char, ch2: char) -> String {
 }
 
 fn main() {
-    let mut split = false;
-
     // parse argument
+    let mut split = false;
     for arg in env::args() {
         if arg == "-s" {
             split = true;
@@ -40,31 +39,29 @@ fn main() {
         }
 
         let ch1;
-        match status_code.chars().nth(0) {
-            Some(ch) => {
-                if ch == ' ' {
-                    ch1 = '_';
-                } else {
-                    ch1 = ch;
-                }
-            },
-            None => ch1 = '_'
+        if let Some(ch) = status_code.chars().nth(0) {
+            if ch == ' ' {
+                ch1 = '_';
+            } else {
+                ch1 = ch;
+            }
+        } else {
+            continue;
         }
+
         let ch2;
-        match status_code.chars().nth(1) {
-            Some(ch) => {
-                if ch == ' ' {
-                    ch2 = '_';
-                } else {
-                    ch2 = ch;
-                }
-            },
-            None => ch2 = '_'
+        if let Some(ch) = status_code.chars().nth(1) {
+            if ch == ' ' {
+                ch2 = '_';
+            } else {
+                ch2 = ch;
+            }
+        } else {
+            continue;
         }
 
         let mut entry = ["", "", ""];
-        let iter = str::split_whitespace(path_line);
-        for (idx, e) in iter.enumerate() {
+        for (idx, e) in str::split_whitespace(path_line).enumerate() {
             entry[idx] = e;
             if idx >= 3 {
                 break;
