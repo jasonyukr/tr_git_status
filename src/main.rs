@@ -1,4 +1,4 @@
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, BufWriter, Write};
 use std::env;
 
 fn get_deco_status_code(ch1: char, ch2: char) -> String {
@@ -17,6 +17,9 @@ fn main() {
             split = true;
         }
     }
+
+    let stdout = io::stdout();
+    let mut out = BufWriter::new(stdout);
 
     let stdin = io::stdin();
     for ln in stdin.lock().lines() {
@@ -72,13 +75,14 @@ fn main() {
 
         if entry[1] == "->" {
             if split {
-                println!("{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, entry[0]);
-                println!("{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, entry[2]);
+                writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, entry[0]).unwrap();
+                writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, entry[2]).unwrap();
             } else {
-                println!("{} \x1b[0m{} -> \x1b[33m{}\x1b[0m", deco_status_code, entry[0], entry[2]);
+                writeln!(out, "{} \x1b[0m{} -> \x1b[33m{}\x1b[0m", deco_status_code, entry[0], entry[2]).unwrap();
             }
         } else {
-            println!("{} \x1b[33m{}\x1b[0m", deco_status_code, path_line);
+            writeln!(out, "{} \x1b[33m{}\x1b[0m", deco_status_code, path_line).unwrap();
         }
     }
+    out.flush().unwrap();
 }
