@@ -9,41 +9,32 @@ fn get_deco_status_code(ch1: char, ch2: char) -> String {
     }
 }
 
-fn process_line<W: Write>(out: &mut BufWriter<W>, split: bool, line: &str) {
+fn process_line<W: Write>(out: &mut BufWriter<W>, split: bool, line: &str) -> bool {
     if line.len() < 4 {
-        return;
+        return false;
     }
 
-    let status_code = &line[0..2];
+    /*
+     * Parse the line.
+     *   XY pathname
+     *   XY pathname1 -> pathname2
+     *   XY "pathname"
+     *   XY "pathname1" -> "pathname2"
+     */
+    let mut status_code = &line[0..2];
     let sep = &line[2..3];
     let path_line = &line[3..];
-
     if sep != " " {
-        return;
+        return false;
     }
 
-    let ch1;
-    if let Some(ch) = status_code.chars().nth(0) {
-        if ch == ' ' {
-            ch1 = '_';
-        } else {
-            ch1 = ch;
-        }
-    } else {
-        return;
-    }
+    // Replace the space with "_" in the status code (XY)
+    let binding = &status_code.replace(" ", "_");
+    status_code = binding;
+    let ch1 = status_code.chars().nth(0).unwrap();
+    let ch2 = status_code.chars().nth(1).unwrap();
 
-    let ch2;
-    if let Some(ch) = status_code.chars().nth(1) {
-        if ch == ' ' {
-            ch2 = '_';
-        } else {
-            ch2 = ch;
-        }
-    } else {
-        return;
-    }
-
+    // Parse the pathname part
     let mut entry = ["", "", ""];
     for (idx, e) in str::split_whitespace(path_line).enumerate() {
         entry[idx] = e;
@@ -64,6 +55,7 @@ fn process_line<W: Write>(out: &mut BufWriter<W>, split: bool, line: &str) {
     } else {
         writeln!(out, "{} \x1b[33m{}\x1b[0m", deco_status_code, path_line).unwrap();
     }
+    true
 }
 
 fn main() {
