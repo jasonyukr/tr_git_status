@@ -1,5 +1,6 @@
 use std::io::{self, BufRead, BufWriter, Write};
 use std::env;
+use regex::Regex;
 
 fn get_deco_status_code(ch1: char, ch2: char) -> String {
     if ch1 == '?' && ch2 == '?' {
@@ -9,7 +10,7 @@ fn get_deco_status_code(ch1: char, ch2: char) -> String {
     }
 }
 
-fn process_line<W: Write>(out: &mut BufWriter<W>, split: bool, line: &str) -> bool {
+fn process_line<W: Write>(re: &Regex, out: &mut BufWriter<W>, split: bool, line: &str) -> bool {
     if line.len() < 4 {
         return false;
     }
@@ -33,28 +34,23 @@ fn process_line<W: Write>(out: &mut BufWriter<W>, split: bool, line: &str) -> bo
     status_code = binding;
     let ch1 = status_code.chars().nth(0).unwrap();
     let ch2 = status_code.chars().nth(1).unwrap();
-
-    // Parse the pathname part
-    let mut entry = ["", "", ""];
-    for (idx, e) in str::split_whitespace(path_line).enumerate() {
-        entry[idx] = e;
-        if idx >= 3 {
-            break;
-        }
-    }
-
     let deco_status_code = get_deco_status_code(ch1, ch2);
 
-    if entry[1] == "->" {
+    // Parse the pathname part
+    if let Some(caps) = re.captures(path_line) {
+        let path1 = caps.get(1).map_or("", |m| m.as_str());
+        let path2 = caps.get(2).map_or("", |m| m.as_str());
+
         if split {
-            writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, entry[0]).unwrap();
-            writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, entry[2]).unwrap();
+            writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, path1).unwrap();
+            writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, path2).unwrap();
         } else {
-            writeln!(out, "{} \x1b[0m{} -> \x1b[33m{}\x1b[0m", deco_status_code, entry[0], entry[2]).unwrap();
+            writeln!(out, "{} \x1b[0m{} -> \x1b[33m{}\x1b[0m", deco_status_code, path1, path2).unwrap();
         }
     } else {
         writeln!(out, "{} \x1b[33m{}\x1b[0m", deco_status_code, path_line).unwrap();
     }
+
     true
 }
 
@@ -70,10 +66,19 @@ fn main() {
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout);
 
+    /*
+     * regular expression for
+     *   A -> B
+     *   A -> "B"
+     *   "A" -> "B"
+     *   "A" -> B
+     */
+    let re = Regex::new(r#""?(.*?)"?\s->\s"?([^"]*)"?"#).unwrap();
+
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         if let Ok(ln) = line {
-            process_line(&mut out, split, &ln);
+            process_line(&re, &mut out, split, &ln);
         }
     }
     out.flush().unwrap();
