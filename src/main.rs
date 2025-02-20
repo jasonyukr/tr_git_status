@@ -1,6 +1,19 @@
 use std::io::{self, BufRead, BufWriter, Write};
 use std::env;
+use lazy_static::lazy_static;
 use regex::Regex;
+
+// Declare a global variable to hold the Regex
+lazy_static! {
+    /*
+     * regular expression for
+     *   A -> B
+     *   A -> "B"
+     *   "A" -> B
+     *   "A" -> "B"
+     */
+    static ref re: Regex = Regex::new(r#""?(.*?)"?\s->\s"?([^"]*)"?"#).unwrap();
+}
 
 fn get_deco_status_code(ch1: char, ch2: char) -> String {
     if ch1 == '?' && ch2 == '?' {
@@ -10,17 +23,35 @@ fn get_deco_status_code(ch1: char, ch2: char) -> String {
     }
 }
 
-fn process_line<W: Write>(re: &Regex, out: &mut BufWriter<W>, split: bool, line: &str) -> bool {
+fn parse_rename(line: &str) -> Option<(&str, &str)> {
+    if let Some(caps) = re.captures(line) {
+        let path1 = caps.get(1).map_or("", |m| m.as_str());
+        let path2 = caps.get(2).map_or("", |m| m.as_str());
+        Some((path1, path2))
+    } else {
+        None
+    }
+}
+
+#[test]
+fn test_parse_rename() {
+    assert_eq!(parse_rename(r#"AAA.txt"#), None);
+    assert_eq!(parse_rename(r#"AAA.txt->CCC.txt"#), None);
+    assert_eq!(parse_rename(r#""AAA space.txt" -> "CCC space.txt""#), Some(("AAA space.txt", "CCC space.txt")));
+    assert_eq!(parse_rename(r#""AAA space.txt" -> CCC.txt"#), Some(("AAA space.txt", "CCC.txt")));
+    assert_eq!(parse_rename(r#"AAA.txt -> "CCC space.txt""#), Some(("AAA.txt", "CCC space.txt")));
+    assert_eq!(parse_rename(r#"AAA.txt -> CCC.txt"#), Some(("AAA.txt", "CCC.txt")));
+}
+
+fn process_line<W: Write>(out: &mut BufWriter<W>, split: bool, line: &str) -> bool {
     if line.len() < 4 {
         return false;
     }
 
     /*
-     * Parse the line.
+     * Parse the line (generic and rename case)
      *   XY pathname
      *   XY pathname1 -> pathname2
-     *   XY "pathname"
-     *   XY "pathname1" -> "pathname2"
      */
     let mut status_code = &line[0..2];
     let sep = &line[2..3];
@@ -36,11 +67,7 @@ fn process_line<W: Write>(re: &Regex, out: &mut BufWriter<W>, split: bool, line:
     let ch2 = status_code.chars().nth(1).unwrap();
     let deco_status_code = get_deco_status_code(ch1, ch2);
 
-    // Parse the pathname part
-    if let Some(caps) = re.captures(path_line) {
-        let path1 = caps.get(1).map_or("", |m| m.as_str());
-        let path2 = caps.get(2).map_or("", |m| m.as_str());
-
+    if let Some((path1, path2)) = parse_rename(path_line) {
         if split {
             writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, path1).unwrap();
             writeln!(out, "{} \x1b[0m{} :: \x1b[33m{}\x1b[0m", deco_status_code, path_line, path2).unwrap();
@@ -66,19 +93,10 @@ fn main() {
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout);
 
-    /*
-     * regular expression for
-     *   A -> B
-     *   A -> "B"
-     *   "A" -> B
-     *   "A" -> "B"
-     */
-    let re = Regex::new(r#""?(.*?)"?\s->\s"?([^"]*)"?"#).unwrap();
-
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         if let Ok(ln) = line {
-            process_line(&re, &mut out, split, &ln);
+            process_line(&mut out, split, &ln);
         }
     }
     out.flush().unwrap();
