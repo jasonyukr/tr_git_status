@@ -70,8 +70,8 @@ fn main() {
      * regular expression for
      *   A -> B
      *   A -> "B"
-     *   "A" -> "B"
      *   "A" -> B
+     *   "A" -> "B"
      */
     let re = Regex::new(r#""?(.*?)"?\s->\s"?([^"]*)"?"#).unwrap();
 
