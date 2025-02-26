@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 regex = "1"
 lazy_static = "1.4.0"
+lscolors = "0.20.0"
+nu-ansi-term = { version = "0.50", optional = true }
